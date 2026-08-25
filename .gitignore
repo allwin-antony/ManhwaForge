@@ -1,0 +1,32 @@
+# Python virtual environment
+venv/
+.venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Large files & comic PDFs
+*.pdf
+*.zip
+*.tar.gz
+
+# Output folders and temporary artifacts
+output/
+output_*/
+*.mp4
+*.mp3
+*.ass
+temp_*/
+scratch/
+
+# IDE and OS files
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Paddle / Deep Learning cache
+.paddleocr/
+.paddlex/
