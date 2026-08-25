@@ -6,12 +6,13 @@ ManhwaForge is a 100% free, fully local, open-source pipeline that transforms ma
 
 ---
 
-## ✨ Features
+## ✨ Key Features
 
-- 🖼️ **Smart Panel Slicing (OpenCV):** Automatically detects panel borders, gutter whitespace, and dark gutters to cut long vertical manhwa strips into individual story frame panels.
-- 💬 **Local Dialogue Extraction (PaddleOCR):** Extracts speech bubble dialogues and sound effects locally on GPU without expensive Cloud Vision APIs.
-- 🧠 **Story Recap Director (Ollama / Local LLMs):** Generates engaging, third-person YouTube-style story recap scripts grounded directly in the panel dialogue, with zero hardcoding and strict anti-repetition constraints.
-- 🎙️ **Neural Voiceover (Edge-TTS):** High-speed, high-fidelity neural text-to-speech with multiple natural voice presets.
+- ⚙️ **Config-Driven Prompts & Lore (Zero Code Editing):** Easily customize system prompts, character cast, negative constraints, and few-shot examples inside `configs/*.yaml` without touching Python code.
+- 🖼️ **Smart Panel Slicing (OpenCV):** Automatically detects panel borders, gutter whitespace, and dark gutters to cut vertical manhwa pages into discrete story frames.
+- 💬 **Local Dialogue Extraction (PaddleOCR):** Extracts speech bubble dialogues and sound effects locally on your GPU without paid cloud APIs.
+- 🧠 **Story Recap Director (Ollama / Local LLM):** Generates engaging, third-person YouTube-style story recap scripts grounded directly in the panel dialogue with strict anti-repetition constraints.
+- 🎙️ **Neural Voiceover (Edge-TTS):** High-speed, high-fidelity neural text-to-speech with multiple natural voice presets and retry backoff.
 - 🎬 **Cinematic Video Renderer (FFmpeg):** Creates smooth Ken Burns zooms and focal pans, synchronized frame-by-frame with speech durations and stylish burnt-in subtitles.
 - 📱 **Multi-Format Support:** Render for **YouTube (16:9 Landscape)** or **TikTok / YouTube Shorts (9:16 Portrait)**.
 
@@ -29,7 +30,7 @@ Manhwa PDF / Images
 [Stage 1: Speech Bubble OCR (PaddleOCR)]
         │
         ▼
-[Stage 2: Script Director (Ollama / Qwen2.5)]
+[Stage 2: Script Director (Ollama + configs/*.yaml)]
         │
         ▼
 [Stage 3: Neural TTS & Subtitle Generator (Edge-TTS)]
@@ -61,14 +62,23 @@ pip install -r requirements.txt
 ```
 
 ### 3. Generate a Recap Video
+
 ```bash
-# Generate a YouTube (16:9) recap video for pages 20 to 25 of a volume
+# Generate a YouTube (16:9) recap video for pages 20 to 25 using default config (Solo Leveling)
 python main.py \
   --pdf "My_Manhwa_Volume.pdf" \
   --output output_recap \
   --start-page 20 \
   --end-page 25 \
   --voice energetic_male \
+  --format youtube
+
+# Use a custom config for another series (e.g. Omniscient Reader's Viewpoint)
+python main.py \
+  --pdf "ORV_Volume_01.pdf" \
+  --config configs/omniscient_reader.yaml \
+  --output output_orv \
+  --voice dramatic_male \
   --format youtube
 
 # Generate a TikTok / Shorts (9:16) vertical video
@@ -78,7 +88,37 @@ python main.py \
   --start-page 1 \
   --end-page 5 \
   --voice calm_female \
-  --format tiktok
+  --format shorts
+```
+
+---
+
+## ⚙️ Customizing Lore & Prompts
+
+You can create or edit any YAML file in `configs/` to tailor the narration style for any webtoon:
+
+```yaml
+# configs/my_manhwa.yaml
+model:
+  name: "qwen2.5:3b"
+  temperature: 0.55
+  repeat_penalty: 1.5
+
+prompt:
+  persona: "You are a suspenseful YouTube webtoon recap narrator."
+  rules:
+    - "Explain what happens in lively, third-person present tense."
+    - "Use active verbs: discovers, warns, intervenes, confronts, realizes."
+  negative_constraints:
+    - "NEVER use the words 'chuckle', 'chuckles', 'smirk', 'smirks'."
+
+lore:
+  series_title: "My Series Title"
+  protagonist: "Character Name - Description"
+  cast:
+    - name: "Ally Name"
+      role: "Healer / Companion"
+  setting: "Modern fantasy world"
 ```
 
 ---
@@ -87,7 +127,8 @@ python main.py \
 - `energetic_male` (`en-US-ChristopherNeural`) - Best for action, hype, and battle scenes.
 - `dramatic_male` (`en-US-EricNeural`) - Deep, suspenseful storytelling.
 - `calm_female` (`en-US-JennyNeural`) - Smooth, clear recap narration.
-- `expressive_female` (`en-US-AvaNeural`) - High emotion and character-driven moments.
+- `storyteller_uk` (`en-GB-RyanNeural`) - Classical British storytelling tone.
+- `deep_male` (`en-US-GuyNeural`) - Authoritative, grounded narration.
 
 ---
 
