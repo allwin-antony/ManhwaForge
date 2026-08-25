@@ -28,10 +28,22 @@ def sanitize_narration(text):
         r'\bbright, clean lighting\b',
         r'\bcomic panel\b',
         r'\bvisual description\b',
-        r'\bpage_\d+(_p\d+)?\b'
+        r'\bpage_\d+(_p\d+)?\b',
+        r'^\s*here is.*?:',
+        r'^\s*narration:\s*',
+        r'^\s*recap:\s*',
+        r'pour encourager le vainqueur'
     ]
     for pattern in banned_phrases:
         text = re.sub(pattern, '', text, flags=re.IGNORECASE)
+    
+    # Fix spacing & punctuation quirks
+    text = re.sub(r'\bJinwoos\b', "Jinwoo's", text)
+    text = re.sub(r'\bSungs\b', "Sung's", text)
+    text = re.sub(r'\bJoohees\b', "Joohee's", text)
+    text = re.sub(r'\bJinwoomakes\b', "Jinwoo makes", text)
+    text = re.sub(r'\bJinwoonods\b', "Jinwoo nods", text)
+    text = re.sub(r'\bJinwoospeaks\b', "Jinwoo speaks", text)
     text = re.sub(r'[\'"]', '', text).strip()
     text = re.sub(r'\s+', ' ', text).strip()
     text = re.sub(r'^[,\.\s]+|[,\.\s]+$', '', text).strip()
@@ -39,15 +51,29 @@ def sanitize_narration(text):
         text += '.'
     return text
 
-SYSTEM_PROMPT = """You are an engaging YouTube anime/manhwa recap narrator.
-Convert the given comic panel into an entertaining third-person recap narration sentence (12-20 words).
+SYSTEM_PROMPT = """You are a top-tier YouTube anime recap narrator (like Manga Recap or AniRecap).
+Convert each comic panel into an entertaining, varied third-person story recap sentence (12-18 words).
 
-RULES:
-1. Speak as a third-person narrator describing what happens on screen.
-2. The main protagonist is Sung Jinwoo (humanity's weakest hunter).
-3. Weave dialogue and character interactions naturally into the storytelling.
-4. Flow naturally from the previous story sentence.
-5. Output ONLY the narration sentence. Do not include quotes, prefixes, or explanations.
+IMPORTANT CONTEXT:
+- Protagonist: Sung Jinwoo (also called Jinwoo) - humanity's weakest E-rank hunter.
+- Ally: Joohee - a caring B-rank healer who worries about Jinwoo's safety.
+- Leader: Mr. Song - the experienced veteran raid leader.
+- Other hunters: Arrogant raid members and gossiping bystanders.
+
+STRICT NEGATIVE CONSTRAINTS:
+- NEVER use the words 'chuckle', 'chuckles', 'smirk', 'smirks', 'mock', 'shrug', or foreign phrases.
+- Use VARIED, active verbs: 'notices', 'gossips', 'arrives', 'wonders', 'realizes', 'warns', 'explains', 'steps forward', 'greets', 'asks', 'apologizes', 'lectures'.
+- Do NOT output explanations or preamble. Output ONLY the narration sentence.
+
+FEW-SHOT EXAMPLES:
+Dialogue: "THE WEAKEST HUNTER OF ALL MANKIND... HE WAS HOSPITALIZED AGAIN."
+Narration: Whispers immediately spread through the crowd as the veteran hunters mock Jinwoo's infamous reputation as humanity's weakest hunter.
+
+Dialogue: "UH, MAY I HAVE SOME COFFEE? | OH, HUNTER SUNG, SORRY WE JUST RAN OUT..."
+Narration: When Jinwoo sheepishly steps over to grab a warm cup of coffee, the vendor apologizes after realizing they just ran out.
+
+Dialogue: "ACK! JINWOO! YOU GOT HURT AGAIN?!"
+Narration: Joohee spots the fresh bandages wrapped across Jinwoo's arm and rushes over in shock to lecture him.
 """
 
 class ScriptGenerator:
@@ -67,17 +93,15 @@ class ScriptGenerator:
             return f"Page {p_num} (Panel {int(sub)})" if sub else f"Page {p_num}"
         return base
 
-    def _generate_single_panel(self, path, ocr_dict, vis_dict, previous_context=""):
+    def _generate_single_panel(self, path, ocr_dict, vis_dict, last_lead_word=""):
         bubbles = ocr_dict.get(path, [])
         dialogues = [clean_dialogue(b['text']) for b in bubbles if not b.get('is_sfx') and len(b['text'].strip()) > 1]
-        dialogue_str = " | ".join(dialogues) if dialogues else "(Silent visual action/reaction)"
+        dialogue_str = " | ".join(dialogues) if dialogues else "(Visual reaction or action)"
         label = self._extract_frame_label(path)
 
-        prev_str = f"PREVIOUS STORY LINE: {previous_context}\n" if previous_context else ""
-        user_prompt = f"""{prev_str}CURRENT PANEL [{label}]:
-- Dialogue on screen: "{dialogue_str}"
-
-Write the next third-person recap narration sentence:"""
+        avoid_prompt = f" (do NOT start with '{last_lead_word}')" if last_lead_word else ""
+        user_prompt = f"""PANEL [{label}] DIALOGUE: "{dialogue_str}"
+Write one punchy, engaging YouTube recap sentence{avoid_prompt}:"""
 
         payload = {
             "model": self.model,
@@ -87,9 +111,10 @@ Write the next third-person recap narration sentence:"""
             ],
             "stream": False,
             "options": {
-                "temperature": 0.35,
+                "temperature": 0.55,
                 "top_p": 0.9,
-                "repeat_penalty": 1.35,
+                "repeat_penalty": 1.5,
+                "presence_penalty": 0.6,
                 "num_gpu": 99
             }
         }
@@ -98,7 +123,6 @@ Write the next third-person recap narration sentence:"""
             resp = requests.post(self.chat_url, json=payload, timeout=25)
             resp.raise_for_status()
             raw_text = resp.json()["message"]["content"].strip()
-            # Clean first line
             raw_text = raw_text.split('\n')[0].strip()
             clean_narr = sanitize_narration(raw_text)
             if clean_narr and len(clean_narr) > 10:
@@ -115,18 +139,21 @@ Write the next third-person recap narration sentence:"""
         sorted_img_paths = sorted(page_ocr_dict.keys())
         visual_data_dict = visual_data_dict or {}
         segments = []
-        last_story_line = ""
+        last_lead_word = ""
         total_frames = len(sorted_img_paths)
         
-        logger.info(f"Running Sliding Story Director across {total_frames} panel frames...")
+        logger.info(f"Running Pro YouTube Story Director across {total_frames} panel frames...")
         
         for path in tqdm(sorted_img_paths, desc="Directing Story Narration"):
             narration = self._generate_single_panel(
                 path,
                 page_ocr_dict,
                 visual_data_dict,
-                previous_context=last_story_line
+                last_lead_word=last_lead_word
             )
+            
+            words = narration.split()
+            last_lead_word = words[0] if words else ""
             
             frame_label = self._extract_frame_label(path)
             vis_info = visual_data_dict.get(path, {})
@@ -136,6 +163,5 @@ Write the next third-person recap narration sentence:"""
                 "script": narration,
                 "focal_point": vis_info.get("focal_point", [0.5, 0.5])
             })
-            last_story_line = narration
                 
         return segments
