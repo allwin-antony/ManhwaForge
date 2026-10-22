@@ -10,7 +10,7 @@ from src.processing import pdf_to_images
 from src.ocr import OCRProcessor
 from src.vision import VisualSceneAnalyzer
 from src.llm import ScriptGenerator
-from src.audio import TTSGenerator
+from src.audio import TTSGenerator, VOICE_MAP
 from src.video import VideoEditor
 
 # Configure logging
@@ -252,7 +252,7 @@ def main():
     parser.add_argument("--stage", type=int, choices=[0, 1, 2, 3], help="Execute up to a specific stage")
     parser.add_argument("--limit", type=int, help="Limit number of images to process")
     parser.add_argument("--model", type=str, default="qwen2.5:3b", help="Ollama LLM model")
-    parser.add_argument("--voice", type=str, default="dramatic_male", choices=["dramatic_male", "energetic_male", "storyteller_uk", "dramatic_female", "deep_male"], help="Voice preset")
+    parser.add_argument("--voice", type=str, default="dramatic_male", choices=list(VOICE_MAP.keys()), help="Voice preset")
     parser.add_argument("--format", type=str, default="youtube", choices=["youtube", "shorts"], help="Video format (youtube=16:9, shorts=9:16)")
     parser.add_argument("--vision", type=str, default="auto", choices=["auto", "local", "layout"], help="Visual situation analysis mode")
     parser.add_argument("--lore", type=str, default=None, help="Path to lore.json or custom premise string (optional)")

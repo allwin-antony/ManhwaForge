@@ -37,14 +37,19 @@ class VideoEditor:
             
         combined_filter = f"{bg_filter}{fg_filter}{overlay}"
         
-        # Burn subtitles if SRT is present
+        # Burn subtitles if subtitle file is present
         if srt_path and os.path.exists(srt_path):
             escaped_srt = srt_path.replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
-            sub_style = (
-                "FontSize=22,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,"
-                "BorderStyle=3,Outline=2,Shadow=1,Alignment=2,MarginV=50,FontName=Arial"
-            )
-            combined_filter += f",subtitles='{escaped_srt}':force_style='{sub_style}'"
+            if escaped_srt.lower().endswith(".ass"):
+                combined_filter += f",subtitles='{escaped_srt}'"
+            else:
+                margin_v = 180 if video_format == "shorts" else 50
+                font_size = 28 if video_format == "shorts" else 22
+                sub_style = (
+                    f"FontSize={font_size},PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,"
+                    f"BorderStyle=3,Outline=2,Shadow=1,Alignment=2,MarginV={margin_v},FontName=Arial"
+                )
+                combined_filter += f",subtitles='{escaped_srt}':force_style='{sub_style}'"
             
         combined_filter += "[v]"
         return combined_filter
@@ -134,9 +139,10 @@ class VideoEditor:
 
         # Concat list file
         concat_list_file = os.path.join(temp_dir, "concat_list.txt")
-        with open(concat_list_file, "w") as f:
+        with open(concat_list_file, "w", encoding="utf-8") as f:
             for c in rendered_clips:
-                f.write(f"file '{os.path.abspath(c)}'\n")
+                clean_clip = os.path.abspath(c).replace("\\", "/")
+                f.write(f"file '{clean_clip}'\n")
 
         # Lossless concat
         raw_concat_video = os.path.join(temp_dir, "raw_concat.mp4") if bgm_path else output_path
@@ -172,7 +178,10 @@ class VideoEditor:
                 "-shortest",
                 output_path
             ]
-            subprocess.run(bgm_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            res_bgm = subprocess.run(bgm_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if res_bgm.returncode != 0:
+                logger.error(f"BGM mix failed: {res_bgm.stderr.decode('utf-8', errors='ignore')}")
+                return False
 
         logger.info(f"🎉 Final video successfully created at: {output_path}")
         return True

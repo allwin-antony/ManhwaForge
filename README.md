@@ -124,11 +124,12 @@ lore:
 ---
 
 ## 🎭 Voice Presets
-- `energetic_male` (`en-US-ChristopherNeural`) - Best for action, hype, and battle scenes.
-- `dramatic_male` (`en-US-EricNeural`) - Deep, suspenseful storytelling.
+- `dramatic_male` (`en-US-ChristopherNeural`) - Deep, suspenseful storytelling.
+- `energetic_male` (`en-US-GuyNeural`) - Best for action, hype, and battle scenes.
 - `calm_female` (`en-US-JennyNeural`) - Smooth, clear recap narration.
+- `dramatic_female` (`en-US-AriaNeural`) - Emotional, expressive female narration.
 - `storyteller_uk` (`en-GB-RyanNeural`) - Classical British storytelling tone.
-- `deep_male` (`en-US-GuyNeural`) - Authoritative, grounded narration.
+- `deep_male` (`en-US-AndrewNeural`) - Authoritative, grounded narration.
 
 ---
 
